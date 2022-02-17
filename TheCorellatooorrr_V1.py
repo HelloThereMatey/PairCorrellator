@@ -4,7 +4,6 @@ from numpy import NaN, ceil, floor
 import pandas as pd
 import requests
 import io
-#import os
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 from matplotlib.gridspec import GridSpec
@@ -111,15 +110,13 @@ else:
         num = len(AssetPrice1)
         mean_Coin1 = np.mean(AssetPrice1)
         mean_Coin2 = np.mean(AssetPrice2)
-        rem = int(np.remainder((num-1), period))
-        #print(rem)
+       
         CovCorrList = []
-        for i in range(num):         #It's still calculating backwards...........
+        for i in range(num):            
             if(i > (num-int(period))):
                 break 
             for j in range(int(period)):
                 count = i + j
-                #print(i,count)
                 Numerator += (AssetPrice1[count] - mean_Coin1)*(AssetPrice2[count] - mean_Coin2)
                 Coin1_std += (AssetPrice1[count] - mean_Coin1)**2
                 Coin2_std += (AssetPrice2[count] - mean_Coin2)**2
@@ -133,7 +130,7 @@ else:
         CovColName = 'CV_'+str(period)+'day'
         CorrColName = 'CC_'+str(period)+'day'
         CovCorrDF = pd.DataFrame(CovCorrList, columns=[CovColName, CorrColName])
-        return CovCorrDF
+        return CovCorrDF       #Dataframe containing the MA for the given period, 1st column co-variance, second column correlation co-efficient. 
 
     MasterDF = pd.concat([PriceMatrix1,PriceMatrix2],axis=1) # Create the master dataframe to output to csv.  
     for i in range(numCCAvs):
@@ -154,7 +151,6 @@ else:
 
     for i in range(int(points)):
         Percentage.loc[i] = ((Percentage.loc[i] - midpoint)/midpoint)*100
-    #print(Percentage)
 
 # # ################################### #Plot figures #############################################################
 
@@ -201,5 +197,4 @@ else:
     ax3.legend(loc='best', bbox_to_anchor=(1, 1))
     ax3.set_ylim(-1.1, 1.1)
 
-    plt.show() # Depending on whether you use IPython or interactive mode, etc.
-#os.system('python3'+'/Users/jamesbishop/Documents/Python/InputsOutPuts/PairCorrOutput.csv')
+    plt.show() # Show figure. Function will remain running until you close the figure. 
