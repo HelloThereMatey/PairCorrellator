@@ -10,8 +10,8 @@ from matplotlib.gridspec import GridSpec
  #You can change to manual coin and time length selection instead of auto selection based on what you've already saved in the input .csv file
 # by commenting out the relevant 6 lines below here and uncommenting lines 23 - 25. 
 #Auto input of coin selection and parameters:
-dfIn = pd.read_csv(r"C:\Users\jimmi\Documents\PairCorrelation\PairCorrInput.csv")
-Coin1 = str(dfIn.loc[0].at["Coin1"])
+dfIn = pd.read_csv(r"C:\Users\jimmi\Documents\PairCorrelation\PairCorrInput.csv")  #We need to make sure the little r is there next to the path string to make it a raw string.
+Coin1 = str(dfIn.loc[0].at["Coin1"])                                   #Windows requires directory designators of "\\" instead of just "\" which works for mac and linux.
 Coin2 = str(dfIn.loc[0].at["Coin2"])
 CCAvs = pd.Series.dropna(dfIn["CC Averages"])
 numCCAvs = len(CCAvs)
@@ -141,8 +141,8 @@ else:
         MasterDF = pd.concat([MasterDF, CorrAv],axis=1)
     CovCorr_Full = CovCorrMA(numDays, Price1, Price2)
     MasterDF = pd.concat([MasterDF, CovCorr_Full],axis=1)
-    MasterDF.to_csv(r'C:\Users\jimmi\Documents\PairCorrelation\PairCorrOutput.csv', index = False)
-    print('Data output to: '+r'C:\Users\jimmi\Documents\PairCorrelation\PairCorrOutput.csv')
+    MasterDF.to_csv(r'C:\Users\jimmi\Documents\PairCorrelation\PairCorrOutput.csv', index = False)  #We need to make sure the little r is there next to the path string to make it a raw string.
+    print('Data output to: '+r'C:\Users\jimmi\Documents\PairCorrelation\PairCorrOutput.csv') #We need to make sure the little r is there next to the path string to make it a raw string. 
 
     #Calculate normalised price ratio wave and normalized percentage changed from median wave.
     PriceRatio = PriceMatrix1['Price (USD)']/PriceMatrix2['Price (USD)']
