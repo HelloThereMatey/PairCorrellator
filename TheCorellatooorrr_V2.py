@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 from matplotlib.gridspec import GridSpec
 import os
-from YieldFarming import ImportDataFromCG
+import ImportPriceHistories_CG
 import matplotlib.dates as mdates
 from datetime import timedelta
 
@@ -33,36 +33,42 @@ def CovCorrCalc(AssetPrice1: np.ndarray, AssetPrice2: np.ndarray) -> np.ndarray:
 ########################## Correlation for certain periods calculated like a moving average function:
 def CovCorrMA(period: int, AssetPrice1: np.ndarray, AssetPrice2: np.ndarray, index) -> pd.DataFrame:
     ProperLength = len(index)
-    count = 0;  Numerator = 0; Coin1_std = 0; Coin2_std = 0
+    Numerator = 0; Coin1_std = 0; Coin2_std = 0; count = 0
     num = len(AssetPrice1)
-    mean_Coin1 = np.mean(AssetPrice1)
-    mean_Coin2 = np.mean(AssetPrice2)
     
     CovColName = 'CV_'+str(period)+'day'
     CorrColName = 'CC_'+str(period)+'day'
     Cov = np.array([]); Corr = np.array([])
-    for i in range(num):            
-        if(i > (num-int(period))):
+    Coin1Sublist = []; Coin2Sublist = []
+    for it in range(num):
+        mean_Coin1 = np.mean(AssetPrice1[it:(it+(period))])
+        mean_Coin2 = np.mean(AssetPrice2[it:(it+(period))])            
+        if(it > (num-int(period))):
             break 
-        for j in range(int(period)):
-            count = i + j
+        for jay in range(int(period)):
+            count = (it + jay); #print('Corr calc. man, calc std, period: ',period,'count: ',count, type(count))
             Numerator += (AssetPrice1[count] - mean_Coin1)*(AssetPrice2[count] - mean_Coin2)
             Coin1_std += (AssetPrice1[count] - mean_Coin1)**2
             Coin2_std += (AssetPrice2[count] - mean_Coin2)**2
-        Denominator = np.real((Coin1_std**0.5)*(Coin2_std**0.5))
-        PeriodCorr = (np.real(Numerator/Denominator))
-        PeriodCov = (np.real(Numerator/(num-1)))
+            Coin1Sublist.append(AssetPrice1[count])
+            Coin2Sublist.append(AssetPrice2[count])
+        Coin1_std /= period; Coin2_std /= period
+        Coin1_std= Coin1_std**0.5; Coin2_std= Coin2_std**0.5
+        C1_std = np.std(Coin1Sublist); C2_std = np.std(Coin2Sublist)
+        Denominator = np.real((Coin1_std)*(Coin2_std))
+        PeriodCov = (np.real(Numerator/(period-1)))
+        PeriodCorr = (np.real(PeriodCov/Denominator))
         Cov = np.append(Cov,PeriodCov)
         Corr = np.append(Corr,PeriodCorr)
         Numerator = 0        ## Reset the counter variables.
         Coin1_std = 0
         Coin2_std = 0
+        Coin1Sublist = []; Coin2Sublist = [] 
     
     Cov = np.pad(Cov,((ProperLength-len(Cov),0)),constant_values=(np.nan))
     Corr = np.pad(Corr,((ProperLength-len(Corr),0)),constant_values=(np.nan))
     CovCorrDict = {CovColName:Cov,CorrColName:Corr}
     CovCorrDF = pd.DataFrame(CovCorrDict, index=index)
-    #print('CovCorrDF length: ',len(CovCorrDF), CovCorrDF)
     return CovCorrDF       #Dataframe containing the MA for the given period, 1st column co-variance, second column correlation co-efficient. 
 
 def Correlation(Series1:pd.Series, Series2:pd.Series,period='Full'): #Calculate Pearson COrrelation co-efficient between two series with time frame: period. 
@@ -71,12 +77,12 @@ def Correlation(Series1:pd.Series, Series2:pd.Series,period='Full'): #Calculate 
         print('The correlation over the entire length between the two series: '+Series1.name+' and '+Series1.name+' is: '+str(round(Cor,3))+'.')
     else:
         Cor = Series1.rolling(period).corr(Series2) ##Using Pandas to calculate the correlation. 
-    return Cor    
+    return Cor      
 
  #You can change to manual coin and time length selection instead of auto selection based on what you've already saved in the input .csv file
 # by commenting out the relevant 6 lines below here and uncommenting lines 23 - 25. 
 #Auto input of coin selection and parameters:
-dfIn = pd.read_csv(CURR_DIR+"\PairCorrInput.csv")  #We need to make sure the little r is there next to the path string to make it a raw string.
+dfIn = pd.read_excel(CURR_DIR+"/PairCorrInput.xlsx")  #We need to make sure the little r is there next to the path string to make it a raw string.
 Coin1 = str(dfIn.loc[0].at["Coin1"])                                   #Windows requires directory designators of "\\" instead of just "\" which works for mac and linux.
 Coin2 = str(dfIn.loc[0].at["Coin2"])
 CCAvs = pd.Series.dropna(dfIn["CC Averages"])
@@ -92,13 +98,12 @@ TimeLength = str(dfIn.loc[0].at["NumDays"])
 #TimeLength = input('Provide number of days into the past that you wish to get the historical data for: ')
 
 #Call CoinGecko API:
-df = ImportDataFromCG.CoinGeckoPriceHistory(Coin1,TimeLength)
+df = ImportPriceHistories_CG.CoinGeckoPriceHistory(Coin1,TimeLength)
 dtIndex = pd.DatetimeIndex(df.index); df.set_index(dtIndex)
-df2 = ImportDataFromCG.CoinGeckoPriceHistory(Coin2,TimeLength)
+df2 = ImportPriceHistories_CG.CoinGeckoPriceHistory(Coin2,TimeLength)
 dtIndex2 = pd.DatetimeIndex(df2.index); df2.set_index(dtIndex2)
 df = df[::-1]; df2 = df2[::-1]
-length = len(df)
-length2 = len(df2)
+length = len(df); length2 = len(df2)
 if(length < length2):
     comLength = length
 else:
@@ -112,7 +117,7 @@ else:
     print("Number of days into the past before today tracked here: "+str(numDays)+'\r')
     PriceMatrix1 = pd.DataFrame(df)
     PriceMatrix2 = pd.DataFrame(df2); print(PriceMatrix1, PriceMatrix2)
-    Price1 = pd.Series.to_numpy(PriceMatrix2['Price (USD)'])
+    Price1 = pd.Series.to_numpy(PriceMatrix1['Price (USD)'])
     Price2 = pd.Series.to_numpy(PriceMatrix2['Price (USD)'])
 
     #Use my covariance, correlation function: 
@@ -141,8 +146,8 @@ else:
         MasterDF = pd.concat([MasterDF, CorrAv, PDCor],axis=1)
     CovCorr_Full = CovCorrMA(numDays, Price1, Price2,Index)
     MasterDF = pd.concat([MasterDF, CovCorr_Full],axis=1)
-    MasterDF.to_csv(CURR_DIR+"\PairCorrOutput.csv", index = False)  #We need to make sure the little r is there next to the path string to make it a raw string.
-    print('Data output to: '+CURR_DIR+"\PairCorrOutput.csv") #We need to make sure the little r is there next to the path string to make it a raw string. 
+    MasterDF.to_excel(CURR_DIR+"/PairCorrOutput.xlsx", index = False)  #We need to make sure the little r is there next to the path string to make it a raw string.
+    print('Data output to: '+CURR_DIR+"/PairCorrOutput.csv") #We need to make sure the little r is there next to the path string to make it a raw string. 
 
     #Calculate normalised price ratio wave and normalized percentage changed from median wave.
     PriceRatio = PriceMatrix1['Price (USD)']/PriceMatrix2['Price (USD)']
@@ -209,8 +214,8 @@ else:
         tracelabel = '$CC_{'+str(int(CCAvs[i]))+'d}$'
         r = (i/(numCCAvs-1)); g = 0; b = 1 - (i/(numCCAvs-1))
         LW = 1+(i*0.25)
-        ax3.plot(MasterDF[traceName], c =(r, g, b), label = tracelabel, linewidth = LW)
-        #ax3.plot(MasterDF['Pandas rolling corr ('+str(int(CCAvs[i]))+'d)'], c =(r, g, b), label = tracelabel, linewidth = LW)
+        #ax3.plot(MasterDF[traceName], c =(r, g, b), label = tracelabel, linewidth = LW)
+        ax3.plot(MasterDF['Pandas rolling corr ('+str(int(CCAvs[i]))+'d)'], c =(r, g, b), label = tracelabel, linewidth = LW)
     ax3.legend(loc=1, fontsize='small',bbox_to_anchor=(1.15, 0.9))
     ax3.set_ylim(-1.1, 1.1)
     for axis in ['top','bottom','left','right']:
